@@ -1,0 +1,9 @@
+# Local config copies (only the .dist template is tracked)
+conf/*.conf
+
+# Build / editor cruft
+build/
+*.o
+*.obj
+*.user
+.vs/

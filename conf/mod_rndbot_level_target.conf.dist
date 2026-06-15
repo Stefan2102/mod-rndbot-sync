@@ -1,0 +1,82 @@
+[worldserver]
+
+########################################
+# mod-rndbot-level-target configuration
+########################################
+#
+# Keeps a configurable share of random bots near the highest online real
+# player's level. The highest player's level + TargetBand acts as a ceiling on
+# the whole bot population; bots above it are pulled down (if AllowDownleveling).
+
+#    RndBotLevelTarget.Enabled
+#        Default: 1 (0 = off)
+RndBotLevelTarget.Enabled = 1
+
+#    RndBotLevelTarget.CheckFrequency
+#        Seconds between safety-timer passes. 0 = events only (login/level-up).
+#        Default: 300
+RndBotLevelTarget.CheckFrequency = 300
+
+#    RndBotLevelTarget.TargetPercent
+#        Percent of eligible random bots to keep within the band. Default: 30
+RndBotLevelTarget.TargetPercent = 30
+
+#    RndBotLevelTarget.TargetBand
+#        Half-width of the band around the target level (+/- levels). Default: 3
+RndBotLevelTarget.TargetBand = 3
+
+#    RndBotLevelTarget.ProcessLimit
+#        Max bots adjusted per pass, shared across downleveling and promotion
+#        (0 = unlimited). Default: 5
+RndBotLevelTarget.ProcessLimit = 5
+
+#    RndBotLevelTarget.AllowDownleveling
+#        When 1, bots above the ceiling (highest real player's level + TargetBand)
+#        are lowered to a random level in [1, ceiling]. So a lone low-level player
+#        pulls the whole bot population down to their level. When 0, bots are only
+#        ever raised (pure upward-only). Default: 1
+RndBotLevelTarget.AllowDownleveling = 1
+
+#    RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers
+#        Exclude bots in a guild that has any real-player member (online or
+#        offline). Default: 1
+RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers = 1
+
+#    RndBotLevelTarget.IgnoreFriendListed
+#        Exclude bots on a real player's friend list. Default: 1
+RndBotLevelTarget.IgnoreFriendListed = 1
+
+#    RndBotLevelTarget.IgnoreArenaTeamBots
+#        Exclude bots in an arena team. Default: 1
+RndBotLevelTarget.IgnoreArenaTeamBots = 1
+
+#    RndBotLevelTarget.IgnoreGroupedBots
+#        Exclude bots that are in any party or raid group, so their level is not
+#        changed mid-dungeon/run. Default: 1
+RndBotLevelTarget.IgnoreGroupedBots = 1
+
+#    RndBotLevelTarget.ExcludeNames
+#        Comma-separated, case-insensitive bot names to never adjust. Default: ""
+RndBotLevelTarget.ExcludeNames =
+
+#    RndBotLevelTarget.GuildCacheRefreshFrequency
+#        Seconds between refreshes of the real-player-guild / friend caches.
+#        Default: 600
+RndBotLevelTarget.GuildCacheRefreshFrequency = 600
+
+#    RndBotLevelTarget.DeathKnightProgression.Enabled
+#        When 1, block Death Knight bots from the world until a real-player
+#        account reaches the required mod-individual-progression state. When 0,
+#        the module does not touch AiPlayerbot.DisableDeathKnightLogin.
+#        Default: 0
+RndBotLevelTarget.DeathKnightProgression.Enabled = 0
+
+#    RndBotLevelTarget.DeathKnightProgression.RequiredState
+#        ProgressionState (1..18) required to unlock DK bots. 13 = WotLK content.
+#        Default: 13
+RndBotLevelTarget.DeathKnightProgression.RequiredState = 13
+
+#    RndBotLevelTarget.FullDebugMode / LiteDebugMode
+#        Verbose / summary logging. Default: 0
+RndBotLevelTarget.FullDebugMode = 0
+RndBotLevelTarget.LiteDebugMode = 0
