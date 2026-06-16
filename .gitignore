@@ -1,6 +1,9 @@
 # Local config copies (only the .dist template is tracked)
 conf/*.conf
 
+# Local-only design docs (kept on disk, not published)
+docs/
+
 # Build / editor cruft
 build/
 *.o
