@@ -1,5 +1,5 @@
-/*
- * This file is part of mod-rndbot-level-target.
+﻿/*
+ * This file is part of mod-rndbot-sync.
  * Copyright (C) 2026 Yuof
  *
  * Derived from mod-player-bot-level-brackets (AGPL-3.0).
@@ -18,10 +18,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MOD_RNDBOT_LEVEL_TARGET_H
-#define MOD_RNDBOT_LEVEL_TARGET_H
+#ifndef MOD_RNDBOT_SYNC_H
+#define MOD_RNDBOT_SYNC_H
 
 // Registers the rndbot level target module scripts.
-void Addmod_rndbot_level_targetScripts();
+void Addmod_rndbot_syncScripts();
 
-#endif // MOD_RNDBOT_LEVEL_TARGET_H
+#endif // MOD_RNDBOT_SYNC_H

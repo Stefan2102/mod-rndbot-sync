@@ -1,4 +1,4 @@
-# mod-rndbot-level-target
+﻿# mod-rndbot-sync
 
 An [AzerothCore](https://www.azerothcore.org/) module that keeps
 [mod-playerbots](https://github.com/liyunfan1223/mod-playerbots) random bots at
@@ -97,38 +97,62 @@ your bot count is unaffected. The unlock is **server-wide and sticky**: once any
 real account reaches the required state, DKs stay available (across restarts too).
 When the option is off, the module leaves mod-playerbots' DK setting alone.
 
+## Item level sync
+
+With `IlvlSync.Enabled = 1` (default), random bots never out-gear you: the
+module caps all bot gear at the highest online player's item level. It does this
+by driving mod-playerbots' own `AiPlayerbot.RandomGearScoreLimit`, so the cap
+applies to freshly initialized bots *and* every re-randomize — gear **quality**
+is left untouched.
+
+The player's item level is measured from their **best owned gear** (equipped plus
+carried bags, bank excluded), taking the best item per slot. That way a temporary
+situational equip — a fishing pole, a gathering tool — doesn't drop the cap,
+because your real weapon sitting in a bag still counts. When no real player is
+online (or the feature is off), your configured `RandomGearScoreLimit` is
+restored.
+
 ## Configuration
 
-All options live in `mod_rndbot_level_target.conf`. Highlights:
+All options live in `mod_rndbot_sync.conf`. Highlights:
 
 | Option | Default | Meaning |
 |--------|---------|---------|
-| `RndBotLevelTarget.Enabled` | 1 | Master on/off. |
-| `RndBotLevelTarget.TargetPercent` | 30 | Percent of bots to keep in the band. |
-| `RndBotLevelTarget.TargetBand` | 3 | Band half-width (± levels) and ceiling offset. |
-| `RndBotLevelTarget.AllowDownleveling` | 1 | Pull bots above the ceiling down. 0 = upward-only. |
-| `RndBotLevelTarget.ProcessLimit` | 5 | Max bots changed per pass (0 = unlimited). |
-| `RndBotLevelTarget.CheckFrequency` | 300 | Safety-timer seconds; 0 = events only. |
-| `RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers` | 1 | Skip bots guilded with a real player. |
-| `RndBotLevelTarget.IgnoreFriendListed` | 1 | Skip bots on a friends list. |
-| `RndBotLevelTarget.IgnoreArenaTeamBots` | 1 | Skip arena-team bots. |
-| `RndBotLevelTarget.IgnoreGroupedBots` | 1 | Skip bots in any party/raid group. |
-| `RndBotLevelTarget.ExcludeNames` | "" | Comma-separated bot names to skip. |
-| `RndBotLevelTarget.DeathKnightProgression.Enabled` | 0 | Gate DK bots on mod-ip progression. |
-| `RndBotLevelTarget.DeathKnightProgression.RequiredState` | 13 | Required ProgressionState to unlock DKs. |
+| `RndBotSync.Enabled` | 1 | Master on/off. |
+| `RndBotSync.TargetPercent` | 30 | Percent of bots to keep in the band. |
+| `RndBotSync.TargetBand` | 3 | Band half-width (± levels) and ceiling offset. |
+| `RndBotSync.AllowDownleveling` | 1 | Pull bots above the ceiling down. 0 = upward-only. |
+| `RndBotSync.ProcessLimit` | 5 | Max bots changed per pass (0 = unlimited). |
+| `RndBotSync.CheckFrequency` | 300 | Safety-timer seconds; 0 = events only. |
+| `RndBotSync.IgnoreGuildBotsWithRealPlayers` | 1 | Skip bots guilded with a real player. |
+| `RndBotSync.IgnoreFriendListed` | 1 | Skip bots on a friends list. |
+| `RndBotSync.IgnoreArenaTeamBots` | 1 | Skip arena-team bots. |
+| `RndBotSync.IgnoreGroupedBots` | 1 | Skip bots in any party/raid group. |
+| `RndBotSync.ExcludeNames` | "" | Comma-separated bot names to skip. |
+| `RndBotSync.DeathKnightProgression.Enabled` | 0 | Gate DK bots on mod-ip progression. |
+| `RndBotSync.DeathKnightProgression.RequiredState` | 13 | Required ProgressionState to unlock DKs. |
+| `RndBotSync.IlvlSync.Enabled` | 1 | Cap bot gear at the player's item level. |
 
 See the `.conf.dist` for the full list (including cache-refresh and debug
 options).
 
 ## Commands
 
-- `.rndbotlevel reload` — reload the configuration at runtime.
+All admin-only (console + in-game):
+
+- `.rndbotsync reload` — reload the configuration at runtime.
+- `.rndbotsync status` — print a read-only snapshot: the target player, the
+  band and ceiling, eligible-bot counts (in-band / above-ceiling / below-band),
+  the current gear cap, and the Death Knight gate state.
+- `.rndbotsync resync` — force an immediate full pass that ignores the
+  `ProcessLimit` throttle (adjusts all eligible bots at once). Still respects the
+  ceiling, gear cap, exclusions, and safety skips.
 
 ## Installation
 
 1. Clone into your AzerothCore `modules/` directory.
 2. Re-run CMake and rebuild the server.
-3. Copy `mod_rndbot_level_target.conf.dist` to `mod_rndbot_level_target.conf` in
+3. Copy `mod_rndbot_sync.conf.dist` to `mod_rndbot_sync.conf` in
    your config directory and adjust as desired.
 
 Requires mod-playerbots. mod-individual-progression is optional (only for the

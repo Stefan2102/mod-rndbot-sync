@@ -1,5 +1,5 @@
-/*
- * This file is part of mod-rndbot-level-target.
+﻿/*
+ * This file is part of mod-rndbot-sync.
  * Copyright (C) 2026 Yuof
  *
  * Derived from mod-player-bot-level-brackets (AGPL-3.0).
@@ -19,7 +19,7 @@
  */
 
 // Core AzerothCore headers
-#include "mod-rndbot-level-target.h"
+#include "mod-rndbot-sync.h"
 #include "ScriptMgr.h"
 #include "Log.h"
 #include "Configuration/Config.h"
@@ -39,6 +39,9 @@
 #include "RandomPlayerbotMgr.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotFactory.h"
+#include "Item.h"
+#include "Bag.h"
+#include "ItemTemplate.h"
 
 // Standard library
 #include <string>
@@ -68,6 +71,8 @@ static bool   g_DkProgressionEnabled = false;
 static uint32 g_DkRequiredState = 13;              // PROGRESSION_TBC_TIER_5
 static bool   g_FullDebug = false;
 static bool   g_LiteDebug = false;
+static bool  g_IlvlSyncEnabled = true;      // cap bot gear at the player's ilvl
+static int32 g_OriginalGearScoreLimit = 0;  // configured AiPlayerbot.RandomGearScoreLimit
 
 // Pulled from mod-playerbots config.
 static uint8  g_RandomBotMinLevel = 1;
@@ -76,27 +81,31 @@ static std::string g_RandomBotAccountPrefix = "rndbot";
 
 static void LoadConfig()
 {
-    g_Enabled = sConfigMgr->GetOption<bool>("RndBotLevelTarget.Enabled", true);
-    g_CheckFrequency = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.CheckFrequency", 300);
-    g_TargetPercent = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.TargetPercent", 30);
-    g_TargetBand = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.TargetBand", 3);
-    g_ProcessLimit = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.ProcessLimit", 5);
-    g_AllowDownleveling = sConfigMgr->GetOption<bool>("RndBotLevelTarget.AllowDownleveling", true);
-    g_IgnoreGuildBotsWithRealPlayers = sConfigMgr->GetOption<bool>("RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers", true);
-    g_IgnoreFriendListed = sConfigMgr->GetOption<bool>("RndBotLevelTarget.IgnoreFriendListed", true);
-    g_IgnoreArenaTeamBots = sConfigMgr->GetOption<bool>("RndBotLevelTarget.IgnoreArenaTeamBots", true);
-    g_IgnoreGroupedBots = sConfigMgr->GetOption<bool>("RndBotLevelTarget.IgnoreGroupedBots", true);
-    g_GuildCacheRefreshFrequency = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.GuildCacheRefreshFrequency", 600);
-    g_DkProgressionEnabled = sConfigMgr->GetOption<bool>("RndBotLevelTarget.DeathKnightProgression.Enabled", false);
-    g_DkRequiredState = sConfigMgr->GetOption<uint32>("RndBotLevelTarget.DeathKnightProgression.RequiredState", 13);
-    g_FullDebug = sConfigMgr->GetOption<bool>("RndBotLevelTarget.FullDebugMode", false);
-    g_LiteDebug = sConfigMgr->GetOption<bool>("RndBotLevelTarget.LiteDebugMode", false);
+    g_Enabled = sConfigMgr->GetOption<bool>("RndBotSync.Enabled", true);
+    g_CheckFrequency = sConfigMgr->GetOption<uint32>("RndBotSync.CheckFrequency", 300);
+    g_TargetPercent = sConfigMgr->GetOption<uint32>("RndBotSync.TargetPercent", 30);
+    g_TargetBand = sConfigMgr->GetOption<uint32>("RndBotSync.TargetBand", 3);
+    g_ProcessLimit = sConfigMgr->GetOption<uint32>("RndBotSync.ProcessLimit", 5);
+    g_AllowDownleveling = sConfigMgr->GetOption<bool>("RndBotSync.AllowDownleveling", true);
+    g_IgnoreGuildBotsWithRealPlayers = sConfigMgr->GetOption<bool>("RndBotSync.IgnoreGuildBotsWithRealPlayers", true);
+    g_IgnoreFriendListed = sConfigMgr->GetOption<bool>("RndBotSync.IgnoreFriendListed", true);
+    g_IgnoreArenaTeamBots = sConfigMgr->GetOption<bool>("RndBotSync.IgnoreArenaTeamBots", true);
+    g_IgnoreGroupedBots = sConfigMgr->GetOption<bool>("RndBotSync.IgnoreGroupedBots", true);
+    g_GuildCacheRefreshFrequency = sConfigMgr->GetOption<uint32>("RndBotSync.GuildCacheRefreshFrequency", 600);
+    g_DkProgressionEnabled = sConfigMgr->GetOption<bool>("RndBotSync.DeathKnightProgression.Enabled", false);
+    g_DkRequiredState = sConfigMgr->GetOption<uint32>("RndBotSync.DeathKnightProgression.RequiredState", 13);
+    g_IlvlSyncEnabled = sConfigMgr->GetOption<bool>("RndBotSync.IlvlSync.Enabled", true);
+    // Read directly from config so it is order-independent of mod-playerbots and
+    // reflects the user's configured value (the cap we restore to when off).
+    g_OriginalGearScoreLimit = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomGearScoreLimit", 0);
+    g_FullDebug = sConfigMgr->GetOption<bool>("RndBotSync.FullDebugMode", false);
+    g_LiteDebug = sConfigMgr->GetOption<bool>("RndBotSync.LiteDebugMode", false);
 
     g_RandomBotMinLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("AiPlayerbot.RandomBotMinLevel", 1));
     g_RandomBotMaxLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("AiPlayerbot.RandomBotMaxLevel", 80));
     g_RandomBotAccountPrefix = sConfigMgr->GetOption<std::string>("AiPlayerbot.RandomBotAccountPrefix", "rndbot");
 
-    std::string excludeNames = sConfigMgr->GetOption<std::string>("RndBotLevelTarget.ExcludeNames", "");
+    std::string excludeNames = sConfigMgr->GetOption<std::string>("RndBotSync.ExcludeNames", "");
     g_ExcludeBotNames.clear();
     std::istringstream stream(excludeNames);
     std::string name;
@@ -199,7 +208,7 @@ static bool GetRealPlayerAccountIds(std::string& accountIdsOut)
     accountIdsOut.clear();
     if (g_RandomBotAccountPrefix.empty())
     {
-        LOG_WARN("server.loading", "[RndBotLevelTarget] AiPlayerbot.RandomBotAccountPrefix is empty; cannot identify real accounts.");
+        LOG_WARN("server.loading", "[RndBotSync] AiPlayerbot.RandomBotAccountPrefix is empty; cannot identify real accounts.");
         return false;
     }
 
@@ -251,7 +260,7 @@ static void RefreshRealPlayerGuildCache()
 
     if (g_FullDebug || g_LiteDebug)
     {
-        LOG_INFO("server.loading", "[RndBotLevelTarget] Real-player guild cache: {} guild(s).", g_RealPlayerGuildIds.size());
+        LOG_INFO("server.loading", "[RndBotSync] Real-player guild cache: {} guild(s).", g_RealPlayerGuildIds.size());
     }
 }
 
@@ -302,7 +311,7 @@ static void EvaluateDeathKnightGate()
         sPlayerbotAIConfig.disableDeathKnightLogin = false;
         if (g_FullDebug || g_LiteDebug)
         {
-            LOG_INFO("server.loading", "[RndBotLevelTarget] DK gate met (state {}); Death Knight bots unlocked.", g_DkRequiredState);
+            LOG_INFO("server.loading", "[RndBotSync] DK gate met (state {}); Death Knight bots unlocked.", g_DkRequiredState);
         }
     }
     else
@@ -310,7 +319,7 @@ static void EvaluateDeathKnightGate()
         sPlayerbotAIConfig.disableDeathKnightLogin = true;
         if (g_FullDebug)
         {
-            LOG_INFO("server.loading", "[RndBotLevelTarget] DK gate not met (state {}); Death Knight bots blocked.", g_DkRequiredState);
+            LOG_INFO("server.loading", "[RndBotSync] DK gate not met (state {}); Death Knight bots blocked.", g_DkRequiredState);
         }
     }
 }
@@ -339,6 +348,113 @@ static bool IsBotExcluded(Player* bot)
         return true;
     }
     return false;
+}
+
+// Average of the best owned item level per equipment slot (equipped + carried
+// bags; bank excluded). Robust to transient situational equips: a real weapon
+// sitting in a bag still wins the main-hand slot over an equipped fishing pole.
+// Returns 0 if the player owns nothing equippable.
+static uint32 GetBestOwnedItemLevel(Player* player)
+{
+    if (!player)
+    {
+        return 0;
+    }
+
+    uint32 bestPerSlot[EQUIPMENT_SLOT_END] = { 0 };
+
+    auto consider = [&](Item* item)
+    {
+        if (!item)
+        {
+            return;
+        }
+        ItemTemplate const* proto = item->GetTemplate();
+        if (!proto)
+        {
+            return;
+        }
+        // Small isEquipable check: only weapons/armor that this player can slot.
+        if (proto->Class != ITEM_CLASS_WEAPON && proto->Class != ITEM_CLASS_ARMOR)
+        {
+            return;
+        }
+        uint8 slot = player->FindEquipSlot(proto, NULL_SLOT, true);
+        if (slot >= EQUIPMENT_SLOT_END)
+        {
+            return; // NULL_SLOT / not equippable by this player
+        }
+        if (proto->ItemLevel > bestPerSlot[slot])
+        {
+            bestPerSlot[slot] = proto->ItemLevel;
+        }
+    };
+
+    // Equipped slots.
+    for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+    {
+        consider(player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot));
+    }
+    // Backpack.
+    for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+    {
+        consider(player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot));
+    }
+    // Equipped bags.
+    for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)
+    {
+        Bag* pBag = player->GetBagByPos(bag);
+        if (!pBag)
+        {
+            continue;
+        }
+        for (uint32 j = 0; j < pBag->GetBagSize(); ++j)
+        {
+            consider(player->GetItemByPos(bag, static_cast<uint8>(j)));
+        }
+    }
+
+    uint32 sum = 0;
+    uint32 count = 0;
+    for (uint8 slot = 0; slot < EQUIPMENT_SLOT_END; ++slot)
+    {
+        if (bestPerSlot[slot] > 0)
+        {
+            sum += bestPerSlot[slot];
+            ++count;
+        }
+    }
+    return count ? sum / count : 0;
+}
+
+// Sets or restores the global gear-score cap so mod-playerbots caps all bot gear
+// (default bot init and re-randomize) at the target player's item level. Same
+// runtime-override pattern as the DK feature's disableDeathKnightLogin.
+static void UpdateGlobalGearCap(Player* targetPlayer)
+{
+    if (!g_IlvlSyncEnabled || !targetPlayer)
+    {
+        sPlayerbotAIConfig.randomGearScoreLimit = g_OriginalGearScoreLimit;
+        return;
+    }
+
+    uint32 ilvl = GetBestOwnedItemLevel(targetPlayer);
+    if (ilvl == 0)
+    {
+        // Player owns nothing equippable: don't set 0 (mod-playerbots treats 0 as
+        // "unlimited"); leave the configured cap in place.
+        sPlayerbotAIConfig.randomGearScoreLimit = g_OriginalGearScoreLimit;
+        return;
+    }
+
+    // Clamp to >= 1 so the cap is never the "unlimited" sentinel.
+    sPlayerbotAIConfig.randomGearScoreLimit = std::max<int32>(1, static_cast<int32>(ilvl));
+
+    if (g_FullDebug || g_LiteDebug)
+    {
+        LOG_INFO("server.loading", "[RndBotSync] Gear cap set to item level {} (player '{}').",
+                 sPlayerbotAIConfig.randomGearScoreLimit, targetPlayer->GetName());
+    }
 }
 
 // ---- Adjustment pass ---------------------------------------------------------
@@ -423,19 +539,20 @@ static bool SetBotLevelInRange(Player* bot, int lower, int upper)
 
     if (g_FullDebug)
     {
-        LOG_INFO("server.loading", "[RndBotLevelTarget] Set bot '{}' to level {}.", bot->GetName(), newLevel);
+        LOG_INFO("server.loading", "[RndBotSync] Set bot '{}' to level {}.", bot->GetName(), newLevel);
     }
     return true;
 }
 
-static void RunAdjustmentPass()
+static void RunAdjustmentPass(bool unlimitedBudget = false)
 {
-    if (!g_Enabled || (g_TargetPercent == 0 && !g_AllowDownleveling))
+    if (!g_Enabled)
     {
-        return; // Nothing to do.
+        return;
     }
 
     int target = -1;
+    Player* targetPlayer = nullptr;
     std::vector<Player*> eligible;
 
     auto const& players = ObjectAccessor::GetPlayers();
@@ -449,8 +566,12 @@ static void RunAdjustmentPass()
 
         if (!IsPlayerBot(player))
         {
-            // Real player: contributes to the target.
-            target = std::max(target, static_cast<int>(player->GetLevel()));
+            // Real player: highest-level one is the target.
+            if (static_cast<int>(player->GetLevel()) > target)
+            {
+                target = static_cast<int>(player->GetLevel());
+                targetPlayer = player;
+            }
             continue;
         }
 
@@ -461,9 +582,17 @@ static void RunAdjustmentPass()
         eligible.push_back(player);
     }
 
+    // Item level sync: set the gear cap from the target player (or restore the
+    // original when none online). Independent of the level-adjustment steps.
+    UpdateGlobalGearCap(targetPlayer);
+
     if (target < 0)
     {
         return; // No real player online: freeze.
+    }
+    if (g_TargetPercent == 0 && !g_AllowDownleveling)
+    {
+        return; // Level adjustment disabled; gear cap already handled above.
     }
     if (eligible.empty())
     {
@@ -484,7 +613,7 @@ static void RunAdjustmentPass()
         ceiling = static_cast<int>(maxLevel);
     }
 
-    bool const unlimited = (g_ProcessLimit == 0);
+    bool const unlimited = unlimitedBudget || (g_ProcessLimit == 0);
     uint32 budget = g_ProcessLimit;
     uint32 downleveled = 0;
     uint32 promoted = 0;
@@ -576,7 +705,7 @@ static void RunAdjustmentPass()
 
     if ((g_FullDebug || g_LiteDebug) && (downleveled > 0 || promoted > 0))
     {
-        LOG_INFO("server.loading", "[RndBotLevelTarget] Target {} band [{}-{}], eligible {}, downleveled {}, promoted {}.",
+        LOG_INFO("server.loading", "[RndBotSync] Target {} band [{}-{}], eligible {}, downleveled {}, promoted {}.",
                  target, bandLower, ceiling, eligible.size(), downleveled, promoted);
     }
 }
@@ -589,23 +718,23 @@ static void RefreshCaches()
 }
 
 // ---- WorldScript -------------------------------------------------------------
-class RndBotLevelTargetWorldScript : public WorldScript
+class RndBotSyncWorldScript : public WorldScript
 {
 public:
-    RndBotLevelTargetWorldScript()
-        : WorldScript("RndBotLevelTargetWorldScript"), m_timer(0), m_guildTimer(0) { }
+    RndBotSyncWorldScript()
+        : WorldScript("RndBotSyncWorldScript"), m_timer(0), m_guildTimer(0) { }
 
     void OnStartup() override
     {
         LoadConfig();
         if (!g_Enabled)
         {
-            LOG_INFO("server.loading", "[RndBotLevelTarget] Disabled via configuration.");
+            LOG_INFO("server.loading", "[RndBotSync] Disabled via configuration.");
             return;
         }
         RefreshCaches();
         EvaluateDeathKnightGate();
-        LOG_INFO("server.loading", "[RndBotLevelTarget] Loaded. CheckFrequency {}s, TargetPercent {}%, TargetBand +/-{}.",
+        LOG_INFO("server.loading", "[RndBotSync] Loaded. CheckFrequency {}s, TargetPercent {}%, TargetBand +/-{}.",
                  g_CheckFrequency, g_TargetPercent, g_TargetBand);
     }
 
@@ -645,10 +774,10 @@ private:
 };
 
 // ---- PlayerScript ------------------------------------------------------------
-class RndBotLevelTargetPlayerScript : public PlayerScript
+class RndBotSyncPlayerScript : public PlayerScript
 {
 public:
-    RndBotLevelTargetPlayerScript() : PlayerScript("RndBotLevelTargetPlayerScript") { }
+    RndBotSyncPlayerScript() : PlayerScript("RndBotSyncPlayerScript") { }
 
     void OnPlayerLogin(Player* player) override
     {
@@ -674,16 +803,18 @@ public:
 };
 
 // ---- CommandScript -----------------------------------------------------------
-class RndBotLevelTargetCommandScript : public CommandScript
+class RndBotSyncCommandScript : public CommandScript
 {
 public:
-    RndBotLevelTargetCommandScript() : CommandScript("RndBotLevelTargetCommandScript") { }
+    RndBotSyncCommandScript() : CommandScript("RndBotSyncCommandScript") { }
 
     ChatCommandTable GetCommands() const override
     {
         static ChatCommandTable table =
         {
-            { "rndbotlevel reload", HandleReload, SEC_ADMINISTRATOR, Console::Yes }
+            { "rndbotsync reload", HandleReload, SEC_ADMINISTRATOR, Console::Yes },
+            { "rndbotsync status", HandleStatus, SEC_ADMINISTRATOR, Console::Yes },
+            { "rndbotsync resync", HandleResync, SEC_ADMINISTRATOR, Console::Yes }
         };
         return table;
     }
@@ -693,15 +824,107 @@ public:
         LoadConfig();
         RefreshCaches();
         EvaluateDeathKnightGate();
-        handler->SendSysMessage("[RndBotLevelTarget] Config reloaded.");
+        UpdateGlobalGearCap(nullptr);
+        handler->SendSysMessage("[RndBotSync] Config reloaded.");
+        return true;
+    }
+
+    // Read-only snapshot of the current target, band, eligible-bot counts, and
+    // the gear/DK state. Changes nothing.
+    static bool HandleStatus(ChatHandler* handler)
+    {
+        int target = -1;
+        Player* targetPlayer = nullptr;
+
+        auto const& players = ObjectAccessor::GetPlayers();
+        for (auto const& itr : players)
+        {
+            Player* player = itr.second;
+            if (!player || !player->IsInWorld())
+            {
+                continue;
+            }
+            if (!IsPlayerBot(player) && static_cast<int>(player->GetLevel()) > target)
+            {
+                target = static_cast<int>(player->GetLevel());
+                targetPlayer = player;
+            }
+        }
+
+        handler->PSendSysMessage("[RndBotSync] Enabled: {}, CheckFrequency: {}s, ProcessLimit: {}.",
+                                 g_Enabled, g_CheckFrequency, g_ProcessLimit);
+
+        if (target < 0)
+        {
+            handler->PSendSysMessage("  Target: none online (frozen).");
+        }
+        else
+        {
+            uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+            int bandLower = std::max(static_cast<int>(g_RandomBotMinLevel), target - static_cast<int>(g_TargetBand));
+            int ceiling = std::min(static_cast<int>(maxLevel), target + static_cast<int>(g_TargetBand));
+
+            uint32 eligible = 0, inBand = 0, aboveCeiling = 0, belowBand = 0;
+            for (auto const& itr : players)
+            {
+                Player* bot = itr.second;
+                if (!bot || !bot->IsInWorld() || !IsPlayerBot(bot))
+                {
+                    continue;
+                }
+                if (!IsPlayerRandomBot(bot) || IsBotExcluded(bot))
+                {
+                    continue;
+                }
+                ++eligible;
+                int level = static_cast<int>(bot->GetLevel());
+                if (level > ceiling)
+                {
+                    ++aboveCeiling;
+                }
+                else if (level < bandLower)
+                {
+                    ++belowBand;
+                }
+                else
+                {
+                    ++inBand;
+                }
+            }
+            uint32 desiredNear = static_cast<uint32>(std::lround(g_TargetPercent / 100.0 * eligible));
+
+            handler->PSendSysMessage("  Target: {} (level {}).", targetPlayer->GetName(), target);
+            handler->PSendSysMessage("  Band: [{}-{}] (ceiling {}), TargetPercent {} -> desired in-band {}.",
+                                     bandLower, ceiling, ceiling, g_TargetPercent, desiredNear);
+            handler->PSendSysMessage("  Eligible: {} (in-band {}, above-ceiling {}, below-band {}), AllowDownleveling: {}.",
+                                     eligible, inBand, aboveCeiling, belowBand, g_AllowDownleveling);
+        }
+
+        handler->PSendSysMessage("  IlvlSync: {}, gear cap: {}, target best item level: {}.",
+                                 g_IlvlSyncEnabled, sPlayerbotAIConfig.randomGearScoreLimit,
+                                 targetPlayer ? GetBestOwnedItemLevel(targetPlayer) : 0);
+        handler->PSendSysMessage("  DK gate: {}, {} (RequiredState {}).",
+                                 g_DkProgressionEnabled, g_DkUnlocked ? "unlocked" : "locked", g_DkRequiredState);
+        return true;
+    }
+
+    // Forces an immediate full pass that ignores the ProcessLimit throttle
+    // (processes all eligible bots at once). Still respects the level ceiling,
+    // gear cap, and exclusions.
+    static bool HandleResync(ChatHandler* handler)
+    {
+        RefreshCaches();
+        EvaluateDeathKnightGate();
+        RunAdjustmentPass(true);
+        handler->SendSysMessage("[RndBotSync] Forced full resync complete.");
         return true;
     }
 };
 
 // ---- Registration ------------------------------------------------------------
-void Addmod_rndbot_level_targetScripts()
+void Addmod_rndbot_syncScripts()
 {
-    new RndBotLevelTargetWorldScript();
-    new RndBotLevelTargetPlayerScript();
-    new RndBotLevelTargetCommandScript();
+    new RndBotSyncWorldScript();
+    new RndBotSyncPlayerScript();
+    new RndBotSyncCommandScript();
 }

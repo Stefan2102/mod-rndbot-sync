@@ -1,82 +1,91 @@
-[worldserver]
+﻿[worldserver]
 
 ########################################
-# mod-rndbot-level-target configuration
+# mod-rndbot-sync configuration
 ########################################
 #
 # Keeps a configurable share of random bots near the highest online real
 # player's level. The highest player's level + TargetBand acts as a ceiling on
 # the whole bot population; bots above it are pulled down (if AllowDownleveling).
 
-#    RndBotLevelTarget.Enabled
+#    RndBotSync.Enabled
 #        Default: 1 (0 = off)
-RndBotLevelTarget.Enabled = 1
+RndBotSync.Enabled = 1
 
-#    RndBotLevelTarget.CheckFrequency
+#    RndBotSync.CheckFrequency
 #        Seconds between safety-timer passes. 0 = events only (login/level-up).
 #        Default: 300
-RndBotLevelTarget.CheckFrequency = 300
+RndBotSync.CheckFrequency = 300
 
-#    RndBotLevelTarget.TargetPercent
+#    RndBotSync.TargetPercent
 #        Percent of eligible random bots to keep within the band. Default: 30
-RndBotLevelTarget.TargetPercent = 30
+RndBotSync.TargetPercent = 30
 
-#    RndBotLevelTarget.TargetBand
+#    RndBotSync.TargetBand
 #        Half-width of the band around the target level (+/- levels). Default: 3
-RndBotLevelTarget.TargetBand = 3
+RndBotSync.TargetBand = 3
 
-#    RndBotLevelTarget.ProcessLimit
+#    RndBotSync.ProcessLimit
 #        Max bots adjusted per pass, shared across downleveling and promotion
 #        (0 = unlimited). Default: 5
-RndBotLevelTarget.ProcessLimit = 5
+RndBotSync.ProcessLimit = 5
 
-#    RndBotLevelTarget.AllowDownleveling
+#    RndBotSync.AllowDownleveling
 #        When 1, bots above the ceiling (highest real player's level + TargetBand)
 #        are lowered to a random level in [1, ceiling]. So a lone low-level player
 #        pulls the whole bot population down to their level. When 0, bots are only
 #        ever raised (pure upward-only). Default: 1
-RndBotLevelTarget.AllowDownleveling = 1
+RndBotSync.AllowDownleveling = 1
 
-#    RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers
+#    RndBotSync.IgnoreGuildBotsWithRealPlayers
 #        Exclude bots in a guild that has any real-player member (online or
 #        offline). Default: 1
-RndBotLevelTarget.IgnoreGuildBotsWithRealPlayers = 1
+RndBotSync.IgnoreGuildBotsWithRealPlayers = 1
 
-#    RndBotLevelTarget.IgnoreFriendListed
+#    RndBotSync.IgnoreFriendListed
 #        Exclude bots on a real player's friend list. Default: 1
-RndBotLevelTarget.IgnoreFriendListed = 1
+RndBotSync.IgnoreFriendListed = 1
 
-#    RndBotLevelTarget.IgnoreArenaTeamBots
+#    RndBotSync.IgnoreArenaTeamBots
 #        Exclude bots in an arena team. Default: 1
-RndBotLevelTarget.IgnoreArenaTeamBots = 1
+RndBotSync.IgnoreArenaTeamBots = 1
 
-#    RndBotLevelTarget.IgnoreGroupedBots
+#    RndBotSync.IgnoreGroupedBots
 #        Exclude bots that are in any party or raid group, so their level is not
 #        changed mid-dungeon/run. Default: 1
-RndBotLevelTarget.IgnoreGroupedBots = 1
+RndBotSync.IgnoreGroupedBots = 1
 
-#    RndBotLevelTarget.ExcludeNames
+#    RndBotSync.ExcludeNames
 #        Comma-separated, case-insensitive bot names to never adjust. Default: ""
-RndBotLevelTarget.ExcludeNames =
+RndBotSync.ExcludeNames =
 
-#    RndBotLevelTarget.GuildCacheRefreshFrequency
+#    RndBotSync.GuildCacheRefreshFrequency
 #        Seconds between refreshes of the real-player-guild / friend caches.
 #        Default: 600
-RndBotLevelTarget.GuildCacheRefreshFrequency = 600
+RndBotSync.GuildCacheRefreshFrequency = 600
 
-#    RndBotLevelTarget.DeathKnightProgression.Enabled
+#    RndBotSync.DeathKnightProgression.Enabled
 #        When 1, block Death Knight bots from the world until a real-player
 #        account reaches the required mod-individual-progression state. When 0,
 #        the module does not touch AiPlayerbot.DisableDeathKnightLogin.
 #        Default: 0
-RndBotLevelTarget.DeathKnightProgression.Enabled = 0
+RndBotSync.DeathKnightProgression.Enabled = 0
 
-#    RndBotLevelTarget.DeathKnightProgression.RequiredState
+#    RndBotSync.DeathKnightProgression.RequiredState
 #        ProgressionState (1..18) required to unlock DK bots. 13 = WotLK content.
 #        Default: 13
-RndBotLevelTarget.DeathKnightProgression.RequiredState = 13
+RndBotSync.DeathKnightProgression.RequiredState = 13
 
-#    RndBotLevelTarget.FullDebugMode / LiteDebugMode
+#    RndBotSync.IlvlSync.Enabled
+#        When 1, cap random-bot gear at the highest online real player's item
+#        level by driving AiPlayerbot.RandomGearScoreLimit at runtime (item level
+#        is computed from the player's best owned gear, equipped + bags). Caps
+#        newly initialized bots and all re-randomizations. Quality is unchanged.
+#        When 0, the module restores your configured RandomGearScoreLimit.
+#        Default: 1
+RndBotSync.IlvlSync.Enabled = 1
+
+#    RndBotSync.FullDebugMode / LiteDebugMode
 #        Verbose / summary logging. Default: 0
-RndBotLevelTarget.FullDebugMode = 0
-RndBotLevelTarget.LiteDebugMode = 0
+RndBotSync.FullDebugMode = 0
+RndBotSync.LiteDebugMode = 0
