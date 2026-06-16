@@ -2,6 +2,8 @@
 
 # mod-rndbot-sync
 
+[![core-build](https://github.com/Yuof/mod-rndbot-sync/actions/workflows/core-build.yml/badge.svg)](https://github.com/Yuof/mod-rndbot-sync/actions/workflows/core-build.yml)
+
 ## Description
 
 `mod-rndbot-sync` keeps [mod-playerbots](https://github.com/liyunfan1223/mod-playerbots)
@@ -56,7 +58,7 @@ an empty world.
 
 ```bash
 cd <ACoreDir>/modules
-git clone <your-fork-url> mod-rndbot-sync
+git clone https://github.com/Yuof/mod-rndbot-sync.git
 ```
 
 ### 2. Re-compile AzerothCore
