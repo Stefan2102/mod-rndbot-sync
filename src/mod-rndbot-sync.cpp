@@ -460,9 +460,8 @@ static void UpdateGlobalGearCap(Player* targetPlayer)
 // ---- Adjustment pass ---------------------------------------------------------
 
 // True if the bot's transient state allows a level change right now. Persistent
-// exclusions are handled separately by IsBotExcluded. Mirrors the source
-// module's IsBotSafeForLevelReset (minus the group check, which is an exclusion
-// here). Caller guarantees a non-null, in-world bot.
+// exclusions are handled separately by IsBotExcluded. Caller guarantees a
+// non-null, in-world bot.
 static bool IsBotSafeToAdjust(Player* bot)
 {
     if (!bot->IsAlive())
@@ -489,7 +488,6 @@ static bool IsBotSafeToAdjust(Player* bot)
 // Knights are floored at 55; if the range is entirely below 55 the bot is
 // skipped. Returns false (no change) for bots that are logging out or not safe
 // to change right now (dead, in combat, in an instance/queue, in flight).
-// Adapted from mod-player-bot-level-brackets' AdjustBotToRange.
 static bool SetBotLevelInRange(Player* bot, int lower, int upper)
 {
     if (!bot || !bot->IsInWorld() || !bot->GetSession() ||
