@@ -26,6 +26,7 @@
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Player.h"
+#include "WorldSession.h"
 #include "ObjectAccessor.h"
 #include "DatabaseEnv.h"
 #include "QueryResult.h"
@@ -123,19 +124,17 @@ static void LoadConfig()
 // ---- Identity ----------------------------------------------------------------
 static std::vector<uint64> g_SocialFriendsList;
 
-static bool IsPlayerBot(Player* player)
-{
-    if (!player)
-    {
-        return false;
-    }
-    PlayerbotAI* botAI = PlayerbotsMgr::instance().GetPlayerbotAI(player);
-    return botAI && botAI->IsBotAI();
-}
-
 static bool IsPlayerRandomBot(Player* player)
 {
     return player && sRandomPlayerbotMgr.IsRandomBot(player);
+}
+
+// A real (human) player, as opposed to any mod-playerbots bot. Reads the bot
+// flag set on the session at creation, so it is reliable even before a bot's
+// PlayerbotAI is registered (which only happens after the login hook fires).
+static bool IsRealPlayer(Player* player)
+{
+    return player && player->GetSession() && !player->GetSession()->IsBot();
 }
 
 // ---- Exclusions --------------------------------------------------------------
@@ -562,7 +561,7 @@ static void RunAdjustmentPass(bool unlimitedBudget = false)
             continue;
         }
 
-        if (!IsPlayerBot(player))
+        if (IsRealPlayer(player))
         {
             // Real player: highest-level one is the target.
             if (static_cast<int>(player->GetLevel()) > target)
@@ -779,7 +778,7 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
-        if (!g_Enabled || IsPlayerBot(player))
+        if (!g_Enabled || !IsRealPlayer(player))
         {
             return;
         }
@@ -792,7 +791,7 @@ public:
 
     void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
     {
-        if (!g_Enabled || IsPlayerBot(player))
+        if (!g_Enabled || !IsRealPlayer(player))
         {
             return;
         }
@@ -842,7 +841,7 @@ public:
             {
                 continue;
             }
-            if (!IsPlayerBot(player) && static_cast<int>(player->GetLevel()) > target)
+            if (IsRealPlayer(player) && static_cast<int>(player->GetLevel()) > target)
             {
                 target = static_cast<int>(player->GetLevel());
                 targetPlayer = player;
@@ -866,7 +865,7 @@ public:
             for (auto const& itr : players)
             {
                 Player* bot = itr.second;
-                if (!bot || !bot->IsInWorld() || !IsPlayerBot(bot))
+                if (!bot || !bot->IsInWorld() || IsRealPlayer(bot))
                 {
                     continue;
                 }
